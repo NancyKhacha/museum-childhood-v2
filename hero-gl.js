@@ -1,4 +1,4 @@
-import {puppetPose} from './hero-math.js?v=20261023-v2k';
+import {puppetPose} from './hero-math.js?v=20261023-v2l';
 // One autonomous material treatment for the wordmark, clouds and whole puppets.
 // Puppets fall continuously with independent wind and rotation, as in the reference.
 const hero=document.querySelector('.hero'),logo=document.querySelector('.morph-logo'),reduced=matchMedia('(prefers-reduced-motion: reduce)');
