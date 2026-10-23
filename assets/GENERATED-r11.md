@@ -1,0 +1,11 @@
+# Материалы r11
+
+Встроенный image_gen. Исходники — предоставленный архив передачи и пять утверждённых интерьеров. WebP — оптимизированные версии с сохранённым альфа-каналом у кукол и люстры. В ИИ-обтравке возможна небольшая реконструкция закрытых частей костюма. Точная датировка не выдумывалась, источники и годы перечислены в puppet-sources.json.
+
+Промпты для кукол: faithfully isolate the complete existing puppet, including head, costume, arms and visible feet; preserve the exact source construction, expression, costume, grain and era; remove other people, puppets, tables and studio; actual transparent alpha, no outline, shadow or sticker rim. Отдельные задания: puppet-hryusha.webp — Хрюша из archive-28.jpg (монохром, 1990); puppet-filya.webp — правый Филя из archive-11.jpg (архивный полосатый костюм, целиком); puppet-stepashka.webp — Степашка из 2026-05.jpg (космическая куртка, красная шапка и шарф); puppet-karkusha.webp — Каркуша из original-КАР-17.jpg (жёлтая шляпка, сиреневое платье, обе лапки, без белого банта).
+
+Промпты для wall-0.webp … wall-4.webp: convert each supplied corridor into a wide 3:1 front-on orthographic wall elevation texture, no vanishing point or perspective; four separate full-height era-specific doors with original wall details between them; preserve the exact palette, finish and line weight of that era; cornice and skirting horizontal, no floor, ceiling, people or text. На стене 1960–80-х тонкий голубой карандаш и тёплая бумага; 90-х — цветочные обои, проводной телефон и пуховик; 2000-х — волнистые вставки дверей, интерком; 2010-х — плоские голубые геометрические формы; 2020-х — мягкие скруглённые ниши и керамика.
+
+Промпт chandelier.webp: extract only the complete crystal chandelier from corridor-0.webp, including ceiling rose, chain and every drop; preserve exact cornflower-blue pencil linework and ivory details; transparent background around and between lines, no room or shadow.
+
+Концепт обложки сохранён в qa/hero-reference-r11.png: синий #0077FF, белый объёмный заголовок «Музей детства», читаемый подзаголовок, четыре целые куклы по углам, ясный центр, тонкие перистые облака и мягкая линзовая дымка. Он использован для размещения героев и рисунка неба; небо реализовано шейдером, логотип и тексты остаются отдельными элементами сайта.
