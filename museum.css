@@ -83,3 +83,15 @@
 .tab-info{display:none;line-height:0;color:#0077ff}.era-tabs button[aria-selected=true] .tab-info{display:inline-flex}
 @media(max-width:600px){.travel-hint{font-size:14px;width:max-content;padding:10px 14px;bottom:calc(var(--museum-bottom) + 14px)}.era-tabs button{flex-direction:column-reverse;gap:2px}.tab-info svg{width:16px;height:16px}}
 @media(max-width:600px){.museum-header .about-project{left:auto;right:16px;top:66px;min-height:28px;font-size:14px}}
+/* v2: one even row on phones — logo left, «О проекте» and the partners right, all centred, tap targets of 44px. */
+@media(max-width:600px){
+ .museum-page{--museum-top:64px}
+ .museum-header{height:64px;padding:0 14px;display:flex;align-items:center;gap:10px}
+ .museum-header .museum-home{position:static;width:84px;height:42px;flex-shrink:0}
+ .museum-header .about-project{position:static;order:2;margin-left:auto;min-height:44px;display:flex;align-items:center;padding:0;font-size:13px;white-space:nowrap}
+ .museum-header .museum-partners{position:static;order:3;width:auto;height:44px;margin:0;gap:8px}
+ .museum-header .partner-links>a{min-height:44px;min-width:44px}
+ .museum-header .partner-links .partner-vk{width:102px}.museum-header .partner-links .partner-nen{width:44px}
+ .museum-header .partner-links img{height:22px}
+}
+@media(max-width:359px){.museum-header .museum-home{width:72px;height:36px}.museum-header .partner-links .partner-vk{width:88px}.museum-header .partner-links img{height:19px}}

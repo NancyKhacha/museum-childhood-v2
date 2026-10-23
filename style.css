@@ -100,3 +100,12 @@ body{background:var(--blue)}main{position:relative;z-index:1}
 .enter-bar .primary:hover{background:#e62238}.enter-bar .primary:focus-visible{outline:3px solid #fff;outline-offset:4px}
 @media(max-width:600px){.fixed-header{height:108px}.header-about{left:auto;right:16px;top:64px;min-height:32px;font-size:14px}.enter-bar .primary{width:100%;min-width:0}.story{padding-bottom:110px}}
 @media(prefers-reduced-motion:reduce){.enter-bar{transition:none}}
+/* v2: on phones the docked header is the same single row as in the museum: logo left, «О проекте» and partners right. */
+@media(max-width:600px){
+ .fixed-header{height:80px;background:linear-gradient(to bottom,rgb(0 119 255 / var(--hero-progress)) 0 80%,rgb(0 119 255 / 0))}
+ .partner-links{gap:8px;height:44px}.partner-links>a{min-height:44px;min-width:44px}
+ .partner-links .partner-vk{width:102px}.partner-links .partner-nen{width:44px}.partner-links img{height:22px}
+ .hero-partners,.fixed-header>.partner-links{width:auto;right:14px;top:10px}
+ .header-about{right:178px;top:10px;min-height:44px;font-size:13px;white-space:nowrap}
+}
+@media(max-width:359px){.partner-links .partner-vk{width:88px}.partner-links img{height:19px}.header-about{right:164px}}
