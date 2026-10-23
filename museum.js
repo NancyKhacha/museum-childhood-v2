@@ -1,11 +1,10 @@
-import {CorridorScene} from './corridor-scene.js?v=20261023-v2d';
-import {readerAtEnd,finalSections,smoothCamera} from './room-math.js?v=20261023-v2d';
-import {clamp,travelGeometry,objectPosition,onScreen,cameraPosition,endReached,displaySize} from './museum-engine.js?v=20261023-v2d';
+import {CorridorScene} from './corridor-scene.js?v=20261023-v2e';
+import {readerAtEnd,finalSections,smoothCamera} from './room-math.js?v=20261023-v2e';
+import {clamp,travelGeometry,objectPosition,onScreen,cameraPosition,endReached,displaySize} from './museum-engine.js?v=20261023-v2e';
 const $=id=>document.getElementById(id),world=$('world'),travel=$('travel'),room=$('room'),reader=$('reader'),content=$('reader-content'),tabs=$('era-tabs'),reduced=matchMedia('(prefers-reduced-motion: reduce)');
 const corridor=new CorridorScene($('corridor-view'),room);
 let restoreOnClose=true,readerEra=0,finalRead=false,lastFinalWheel=0,finalGestureStartedAtBottom=false,finalTouchStartedAtBottom=false,returningHome=false;
-let displayScroll=0,lastFrame=0,lastSavedScroll=-1,journeyHeight=innerHeight,stageWidth=innerWidth,stageHeight=innerHeight,showHowTo=true;
-try{showHowTo=!localStorage.getItem('museum-howto-v2');}catch{}
+let displayScroll=0,lastFrame=0,lastSavedScroll=-1,journeyHeight=innerHeight,stageWidth=innerWidth,stageHeight=innerHeight;
 // The era text opens by itself only on the first visit to each era; after that, from the ⓘ on its tab.
 let seenEras=new Set();try{seenEras=new Set(JSON.parse(localStorage.getItem('museum-eras-seen-v2')||'[]'));}catch{}
 let data,eraIndex=0,objects=[],geometry,positions={},dialogKind='',savedY=0,pending=false,touchY=0,endArmed=false,finalShown=false,switching=false;
@@ -30,7 +29,7 @@ function showFinal(){const sections=finalSections(data),speaker=data.finalSpeake
  }});if(atReaderEnd())finalRead=true;
 }
 function atReaderEnd(){return readerAtEnd(reader.scrollTop,reader.clientHeight,reader.scrollHeight);}
-function returnToCover(){if(returningHome)return;returningHome=true;location.assign('index.html?v=20261023-v2d#start');}
+function returnToCover(){if(returningHome)return;returningHome=true;location.assign('index.html?v=20261023-v2e#start');}
 reader.addEventListener('scroll',()=>{if(dialogKind==='final'&&atReaderEnd())finalRead=true;},{passive:true});
 
 function showProgramme(){if(eraIndex===4){showFinal();return;}const era=data.eras[eraIndex];openReader('«Спокойной ночи, малыши!»',era.show,{image:era.showImage,caption:era.showImageCaption,kind:'show'});}
@@ -50,8 +49,8 @@ function update(now=performance.now()){
  }
  const active=tabs.querySelector('[aria-selected=true]');if(active)active.style.setProperty('--era-progress',`${progress*100}%`);
  $('museum-stage').classList.toggle('at-screen',displayScroll>=geometry.approachDistance*.98);
- if(showHowTo&&scrollY>innerHeight*.5)dismissHowTo();
- $('travel-hint').hidden=!showHowTo||reader.open;
+ // The walking hint stands at the start of every corridor and steps aside once the visitor moves.
+ $('travel-hint').hidden=scrollY>innerHeight*.5||reader.open;
 
  if(scrollY<geometry.scrollDistance-innerHeight*.6)endArmed=true;
  if(lastSavedScroll!==scrollY){savePosition();lastSavedScroll=scrollY;}
@@ -80,7 +79,6 @@ if(objects.length)savePosition();if(reader.open)closeReader({restore:false});era
  document.documentElement.classList.remove('era-switching');switching=false;
  }}
 
-function dismissHowTo(){showHowTo=false;$('travel-hint').hidden=true;try{localStorage.setItem('museum-howto-v2','1');}catch{}}
 reader.addEventListener('close',request);
 addEventListener('scroll',request,{passive:true});addEventListener('resize',()=>{layout();});window.visualViewport?.addEventListener('resize',layout);reduced.addEventListener('change',request);
 addEventListener('wheel',e=>{
@@ -96,5 +94,5 @@ addEventListener('touchstart',e=>{touchY=e.touches[0]?.clientY||0;finalTouchStar
 addEventListener('touchmove',e=>{const delta=touchY-(e.touches[0]?.clientY||0);if(finalTouchStartedAtBottom&&delta>45){e.preventDefault();returnToCover();return;}if(reader.open&&dialogKind==='epoch'&&!content.contains(e.target)&&Math.abs(delta)>14){e.preventDefault();closeReader();}},{passive:false});
 addEventListener('keydown',e=>{if(e.repeat||e.shiftKey||!['ArrowDown','PageDown',' '].includes(e.key))return;if(e.key===' '&&e.target.closest('button,a'))return;if(eraIndex===4&&finalRead&&(!reader.open||(dialogKind==='final'&&atReaderEnd()))){e.preventDefault();returnToCover();}});
 
-async function boot(){const response=await fetch('data/museum.json?v=20261023-v2d');if(!response.ok)throw Error('content');data=await response.json();try{positions=JSON.parse(sessionStorage.getItem('museum-positions-v4')||'{}');}catch{}for(const [i,era]of data.eras.entries()){const label=innerWidth<=600?['60–80-е','90-е','00-е','10-е','20-е'][i]:era.label;const b=element('button',{type:'button',role:'tab','aria-controls':'museum-stage','aria-selected':false},[element('span',{class:'tab-label',text:label}),infoMark()]);b.addEventListener('click',()=>{if(i===eraIndex)showEpoch();else selectEra(i,{transition:true});});b.addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();const target=e.key==='Home'?0:e.key==='End'?4:(i+(e.key==='ArrowRight'?1:4))%5;selectEra(target,{transition:true});tabs.children[target].focus({preventScroll:true});});tabs.append(b);}const param=Number(new URLSearchParams(location.search).get('era'));selectEra(Number.isInteger(param)?clamp(param,0,4):0,{restore:false});}
+async function boot(){const response=await fetch('data/museum.json?v=20261023-v2e');if(!response.ok)throw Error('content');data=await response.json();try{positions=JSON.parse(sessionStorage.getItem('museum-positions-v4')||'{}');}catch{}for(const [i,era]of data.eras.entries()){const label=innerWidth<=600?['60–80-е','90-е','00-е','10-е','20-е'][i]:era.label;const b=element('button',{type:'button',role:'tab','aria-controls':'museum-stage','aria-selected':false},[element('span',{class:'tab-label',text:label}),infoMark()]);b.addEventListener('click',()=>{if(i===eraIndex)showEpoch();else selectEra(i,{transition:true});});b.addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();const target=e.key==='Home'?0:e.key==='End'?4:(i+(e.key==='ArrowRight'?1:4))%5;selectEra(target,{transition:true});tabs.children[target].focus({preventScroll:true});});tabs.append(b);}const param=Number(new URLSearchParams(location.search).get('era'));selectEra(Number.isInteger(param)?clamp(param,0,4):0,{restore:false});}
 boot().catch(()=>{const box=element('div',{class:'load-error',role:'alert'},[element('p',{text:'Не удалось открыть музей. Попробуйте обновить страницу.'})]);const retry=element('button',{type:'button',text:'Обновить'});retry.addEventListener('click',()=>location.reload());box.append(retry);document.body.append(box);});
