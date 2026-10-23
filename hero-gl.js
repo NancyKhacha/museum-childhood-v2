@@ -1,4 +1,4 @@
-import {puppetPose} from './hero-math.js?v=20261023-v2l';
+import {puppetPose} from './hero-math.js?v=20261023-v2m';
 // One autonomous material treatment for the wordmark, clouds and whole puppets.
 // Puppets fall continuously with independent wind and rotation, as in the reference.
 const hero=document.querySelector('.hero'),logo=document.querySelector('.morph-logo'),reduced=matchMedia('(prefers-reduced-motion: reduce)');
@@ -39,16 +39,19 @@ if(hero&&logo&&!reduced.matches){
  let scene,wordmark;
  try{scene=new GelCanvas(sceneCanvas);wordmark=new GelCanvas(logoCanvas);hero.classList.add('scene-active');}catch{sceneCanvas.remove();logoCanvas.remove();}
  if(scene&&wordmark){
-  const logoImage=logo.querySelector('img'),cloudElements=[...hero.querySelectorAll('.cloud')],headElements=[...hero.querySelectorAll('.falling')],images=[logoImage,...cloudElements.map(n=>n.querySelector('img')),...headElements.map(n=>n.querySelector('img'))];let frame=0,started=0,loaded=false,logoAsset,clouds,heads;
+  const logoImage=logo.querySelector('img'),cloudElements=[...hero.querySelectorAll('.cloud')],headElements=[...hero.querySelectorAll('.falling')];let frame=0,started=0,loaded=false,logoAsset=null;const clouds=[],heads=headElements.map(()=>null);
+  // The sky needs no picture and starts at once; the wordmark and every puppet join as soon as their own image arrives.
+  const blank=document.createElement('canvas');blank.width=blank.height=1;const skyAsset={...scene.texture(blank),image:{naturalWidth:1,naturalHeight:1}};
   function draw(now){frame=0;if(!loaded||document.hidden||reduced.matches)return;const time=(now-started)/1000,h=hero.getBoundingClientRect(),visible=h.bottom>0;
-   wordmark.resize(690,345);wordmark.clear();wordmark.draw(logoAsset,{x:345,y:172.5,w:690,h:345},{time,material:.8});
+   if(logoAsset){wordmark.resize(690,345);wordmark.clear();wordmark.draw(logoAsset,{x:345,y:172.5,w:690,h:345},{time,material:.8});}
    // The sky stays fixed behind the whole page. Past the cover it is redrawn only on scroll, with thinner clouds behind the text.
    const sw=sceneCanvas.clientWidth||innerWidth,sh=sceneCanvas.clientHeight||innerHeight,leave=clamp(-h.top/h.height);
-   scene.resize(sw,sh);scene.clear();scene.draw(heads[0].asset,{x:sw/2,y:sh/2,w:sw,h:sh},{time,material:sw/sh,sky:1,phase:scrollY/sh*.3,opacity:1-.45*leave});
+   scene.resize(sw,sh);scene.clear();scene.draw(skyAsset,{x:sw/2,y:sh/2,w:sw,h:sh},{time,material:sw/sh,sky:1,phase:scrollY/sh*.3,opacity:1-.45*leave});
    if(visible){for(const [i,c]of clouds.entries()){const r=contained(c.asset.image,c.el.getBoundingClientRect());r.y+=Math.sin(time*.25+i)*4;scene.draw(c.asset,r,{time,phase:i*1.7,material:.75});}
     let entered=0;
     // Smaller (farther) puppets are drawn first so the near ones pass in front of them.
-    const poses=heads.map((b,i)=>({b,i,pose:puppetPose(i,time,h.width,h.height)})).filter(p=>p.pose).sort((p,q)=>p.pose.height-q.pose.height);entered=poses.length;
+    // A puppet that arrives late starts its route from the beginning, so it flies in rather than popping up mid-sky.
+    const poses=heads.map((b,i)=>b&&{b,i,pose:puppetPose(i,time-b.delay,h.width,h.height)}).filter(p=>p&&p.pose).sort((p,q)=>p.pose.height-q.pose.height);entered=poses.length;
     for(const {b,i,pose}of poses){
      const cells=b.el.hasAttribute('data-cell')?2:1,cell=Number(b.el.dataset.cell)||0,aspect=b.asset.image.naturalWidth/cells/b.asset.image.naturalHeight;
      scene.draw(b.asset,{x:pose.x+h.left,y:pose.y+h.top,w:pose.height*aspect,h:pose.height},{time,phase:i*.9,angle:pose.angle,material:.18,opacity:(1-.5*leave)*pose.alpha,blur:pose.blur*b.asset.image.naturalHeight/pose.height,uvRect:[cell/cells,0,1/cells,1]});
@@ -58,7 +61,11 @@ if(hero&&logo&&!reduced.matches){
    }
   }
   const wake=()=>{if(loaded&&!frame&&!reduced.matches)frame=requestAnimationFrame(draw);};
-  Promise.all(images.map(ready)).then(()=>{logoAsset=wordmark.texture(logoImage);clouds=cloudElements.map(el=>({el,asset:scene.texture(el.querySelector('img'))}));heads=headElements.map(el=>({el,asset:scene.texture(el.querySelector('img'))}));started=performance.now();loaded=true;logo.classList.add('gl-active');logo.dataset.renderer='webgl';hero.dataset.renderer='webgl';hero.dataset.sequence='continuous-wind';wake();}).catch(()=>{hero.classList.remove('scene-active');sceneCanvas.remove();logoCanvas.remove();});
-  addEventListener('scroll',wake,{passive:true});addEventListener('resize',wake);document.addEventListener('visibilitychange',wake);reduced.addEventListener('change',()=>{hero.classList.toggle('scene-active',!reduced.matches);logo.classList.toggle('gl-active',!reduced.matches);if(reduced.matches){cancelAnimationFrame(frame);frame=0;}else wake();});for(const canvas of [sceneCanvas,logoCanvas])canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();loaded=false;hero.classList.remove('scene-active');logo.classList.remove('gl-active');});
+  started=performance.now();loaded=true;hero.dataset.renderer='webgl';hero.dataset.sequence='continuous-wind';wake();
+  // Until its image is decoded the wordmark stays the plain <img>; a broken image simply keeps that fallback.
+  ready(logoImage).then(()=>{logoAsset=wordmark.texture(logoImage);if(!reduced.matches)logo.classList.add('gl-active');logo.dataset.renderer='webgl';wake();}).catch(()=>logoCanvas.remove());
+  for(const el of cloudElements){const img=el.querySelector('img');ready(img).then(()=>clouds.push({el,asset:scene.texture(img)})).catch(()=>{});}
+  headElements.forEach((el,i)=>{const img=el.querySelector('img');ready(img).then(()=>{heads[i]={el,asset:scene.texture(img),delay:Math.max(0,(performance.now()-started)/1000-i*.65)};}).catch(()=>{});});
+  addEventListener('scroll',wake,{passive:true});addEventListener('resize',wake);document.addEventListener('visibilitychange',wake);reduced.addEventListener('change',()=>{hero.classList.toggle('scene-active',!reduced.matches);logo.classList.toggle('gl-active',!reduced.matches&&!!logoAsset);if(reduced.matches){cancelAnimationFrame(frame);frame=0;}else wake();});for(const canvas of [sceneCanvas,logoCanvas])canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();loaded=false;hero.classList.remove('scene-active');logo.classList.remove('gl-active');});
  }
 }

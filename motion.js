@@ -13,3 +13,9 @@ function render(now=performance.now()){
 function syncEnter(){const shown=scrollY>40;if(enterBar.classList.contains('is-visible')===shown)return;enterBar.classList.toggle('is-visible',shown);enterBar.setAttribute('aria-hidden',String(!shown));enterBar.querySelector('a').tabIndex=shown?0:-1;}
 function request(){syncEnter();if(!pending){pending=true;requestAnimationFrame(render)}}
 addEventListener('scroll',request,{passive:true});addEventListener('resize',request);reduce.addEventListener('change',request);syncEnter();render();
+// Once the cover has settled, warm the cache for the first corridor so «Войти в музей» opens quickly.
+// Skipped on data-saver and 2G; the heavy third exhibit is left to load in the museum itself.
+addEventListener('load',()=>setTimeout(()=>{const c=navigator.connection;if(c&&(c.saveData||/2g/.test(c.effectiveType||'')))return;
+ const v=new URL(enterBar.querySelector('a').href).searchParams.get('v');
+ for(const href of [`museum.html?era=0&v=${v}`,`museum.css?v=${v}`,`museum.js?v=${v}`,`corridor-scene.js?v=${v}`,`room-math.js?v=${v}`,`museum-engine.js?v=${v}`,`data/museum.json?v=${v}`,'assets/corridor-0.webp','assets/object-01.png','assets/object-02.png']){const l=document.createElement('link');l.rel='prefetch';l.href=href;document.head.append(l);}
+},1500),{once:true});
