@@ -1,6 +1,6 @@
-import {CorridorScene} from './corridor-scene.js?v=20261023-v2f';
-import {readerAtEnd,finalSections,smoothCamera} from './room-math.js?v=20261023-v2f';
-import {clamp,travelGeometry,objectPosition,onScreen,cameraPosition,endReached,displaySize} from './museum-engine.js?v=20261023-v2f';
+import {CorridorScene} from './corridor-scene.js?v=20261023-v2j';
+import {readerAtEnd,finalSections,smoothCamera} from './room-math.js?v=20261023-v2j';
+import {clamp,travelGeometry,objectPosition,onScreen,depthLook,cameraPosition,endReached,displaySize} from './museum-engine.js?v=20261023-v2j';
 const $=id=>document.getElementById(id),world=$('world'),travel=$('travel'),room=$('room'),reader=$('reader'),content=$('reader-content'),tabs=$('era-tabs'),reduced=matchMedia('(prefers-reduced-motion: reduce)');
 const corridor=new CorridorScene($('corridor-view'),room);
 let restoreOnClose=true,readerEra=0,finalRead=false,lastFinalWheel=0,finalGestureStartedAtBottom=false,finalTouchStartedAtBottom=false,returningHome=false;
@@ -29,7 +29,7 @@ function showFinal(){const sections=finalSections(data),speaker=data.finalSpeake
  }});if(atReaderEnd())finalRead=true;
 }
 function atReaderEnd(){return readerAtEnd(reader.scrollTop,reader.clientHeight,reader.scrollHeight);}
-function returnToCover(){if(returningHome)return;returningHome=true;location.assign('index.html?v=20261023-v2f#start');}
+function returnToCover(){if(returningHome)return;returningHome=true;location.assign('index.html?v=20261023-v2j#start');}
 reader.addEventListener('scroll',()=>{if(dialogKind==='final'&&atReaderEnd())finalRead=true;},{passive:true});
 
 function showProgramme(){if(eraIndex===4){showFinal();return;}const era=data.eras[eraIndex];openReader('«Спокойной ночи, малыши!»',era.show,{image:era.showImage,caption:era.showImageCaption,kind:'show'});}
@@ -42,8 +42,8 @@ function update(now=performance.now()){
  const progress=clamp(displayScroll/geometry.scrollDistance),camera=cameraPosition(displayScroll,geometry);
  world.style.transform=`translateZ(${camera}px)`;room.style.transform='none';corridor.draw(camera/geometry.depth);
  for(const o of objects){
-  const visible=onScreen(o.position,o.size,camera,stageWidth,stageHeight,innerWidth<=600?850:1000);
-  o.node.style.opacity='';o.node.style.visibility=visible?'visible':'hidden';o.node.tabIndex=visible?0:-1;o.node.style.pointerEvents=visible?'auto':'none';
+  const perspective=innerWidth<=600?850:1000,look=depthLook(o.position,camera,perspective),visible=!look.gone&&onScreen(o.position,o.size,camera,stageWidth,stageHeight,perspective);
+  o.node.style.opacity=String(look.opacity);if(o.node.style.filter!==look.filter)o.node.style.filter=look.filter;o.node.style.visibility=visible?'visible':'hidden';o.node.tabIndex=visible?0:-1;o.node.style.pointerEvents=visible?'auto':'none';
   o.node.classList.toggle('distant',o.position.z-camera>(innerWidth<=600?900:1500));
   if(!o.show)o.node.style.setProperty('--caption-scale',String(Math.max(.25,1+(o.position.z-camera)/(innerWidth<=600?850:1000))));
  }
@@ -94,5 +94,5 @@ addEventListener('touchstart',e=>{touchY=e.touches[0]?.clientY||0;finalTouchStar
 addEventListener('touchmove',e=>{const delta=touchY-(e.touches[0]?.clientY||0);if(finalTouchStartedAtBottom&&delta>45){e.preventDefault();returnToCover();return;}if(reader.open&&dialogKind==='epoch'&&!content.contains(e.target)&&Math.abs(delta)>14){e.preventDefault();closeReader();}},{passive:false});
 addEventListener('keydown',e=>{if(e.repeat||e.shiftKey||!['ArrowDown','PageDown',' '].includes(e.key))return;if(e.key===' '&&e.target.closest('button,a'))return;if(eraIndex===4&&finalRead&&(!reader.open||(dialogKind==='final'&&atReaderEnd()))){e.preventDefault();returnToCover();}});
 
-async function boot(){const response=await fetch('data/museum.json?v=20261023-v2f');if(!response.ok)throw Error('content');data=await response.json();try{positions=JSON.parse(sessionStorage.getItem('museum-positions-v4')||'{}');}catch{}for(const [i,era]of data.eras.entries()){const label=innerWidth<=600?['60–80-е','90-е','00-е','10-е','20-е'][i]:era.label;const b=element('button',{type:'button',role:'tab','aria-controls':'museum-stage','aria-selected':false},[element('span',{class:'tab-label',text:label}),infoMark()]);b.addEventListener('click',()=>{if(i===eraIndex)showEpoch();else selectEra(i,{transition:true});});b.addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();const target=e.key==='Home'?0:e.key==='End'?4:(i+(e.key==='ArrowRight'?1:4))%5;selectEra(target,{transition:true});tabs.children[target].focus({preventScroll:true});});tabs.append(b);}const param=Number(new URLSearchParams(location.search).get('era'));selectEra(Number.isInteger(param)?clamp(param,0,4):0,{restore:false});}
+async function boot(){const response=await fetch('data/museum.json?v=20261023-v2j');if(!response.ok)throw Error('content');data=await response.json();try{positions=JSON.parse(sessionStorage.getItem('museum-positions-v4')||'{}');}catch{}for(const [i,era]of data.eras.entries()){const label=innerWidth<=600?['60–80-е','90-е','00-е','10-е','20-е'][i]:era.label;const b=element('button',{type:'button',role:'tab','aria-controls':'museum-stage','aria-selected':false},[element('span',{class:'tab-label',text:label}),infoMark()]);b.addEventListener('click',()=>{if(i===eraIndex)showEpoch();else selectEra(i,{transition:true});});b.addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();const target=e.key==='Home'?0:e.key==='End'?4:(i+(e.key==='ArrowRight'?1:4))%5;selectEra(target,{transition:true});tabs.children[target].focus({preventScroll:true});});tabs.append(b);}const param=Number(new URLSearchParams(location.search).get('era'));selectEra(Number.isInteger(param)?clamp(param,0,4):0,{restore:false});}
 boot().catch(()=>{const box=element('div',{class:'load-error',role:'alert'},[element('p',{text:'Не удалось открыть музей. Попробуйте обновить страницу.'})]);const retry=element('button',{type:'button',text:'Обновить'});retry.addEventListener('click',()=>location.reload());box.append(retry);document.body.append(box);});
