@@ -77,3 +77,14 @@
 .reader-content>.watch-programme{margin-top:0;margin-bottom:28px}
 .reader[data-kind=object] .reader-content h2{margin-top:0}
 @media(max-width:600px){.travel-hint{bottom:calc(var(--museum-bottom) + 12px);font-size:12px;width:310px;max-width:calc(100% - 24px)}.reader[data-kind=show] .reader-image,.reader[data-kind=final]>.reader-content>.reader-figure .reader-image{max-height:180px}}
+/* v2: a plain how-to card on the first visit and an always-visible way back to the era text. */
+.travel-hint{bottom:calc(var(--museum-bottom) + 76px);width:min(460px,calc(100% - 32px));max-width:none;padding:18px 20px 16px;border-radius:16px;background:#fff;color:#002147;font-size:15px;line-height:1.4;text-align:left;pointer-events:auto;box-shadow:0 18px 50px rgba(0,33,71,.18);z-index:6}
+.travel-hint-title{font-size:18px;font-weight:600;margin:0 0 8px}
+.travel-hint ol{margin:0;padding-left:20px}.travel-hint li+li{margin-top:6px}.travel-hint li::marker{color:#0077ff;font-weight:600}
+.travel-hint .desktop-hint,.travel-hint .touch-hint{margin:0}
+.hint-ok{margin-top:14px;border:0;border-radius:10px;background:#0077ff;color:#fff;font:600 15px/1 Onest,sans-serif;padding:12px 20px;min-height:44px;cursor:pointer}
+.hint-ok:hover{background:#005eff}.hint-ok:focus-visible{outline:3px solid #7cedf8;outline-offset:3px}
+.era-info{position:absolute;z-index:5;left:50%;bottom:calc(var(--museum-bottom) + 16px);transform:translateX(-50%);display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:8px 18px 8px 12px;border:0;border-radius:999px;background:rgba(255,255,255,.96);color:#002147;font:500 16px/1.2 Onest,sans-serif;white-space:nowrap;cursor:pointer;box-shadow:0 6px 20px rgba(0,33,71,.14)}
+.era-info svg{color:#0077ff;flex-shrink:0}.era-info:hover{background:#fff}.era-info:focus-visible{outline:3px solid #7cedf8;outline-offset:3px}
+@media(max-width:600px){.travel-hint{bottom:calc(var(--museum-bottom) + 70px);font-size:14px;padding:16px 16px 14px}.travel-hint-title{font-size:17px}.era-info{font-size:15px;bottom:calc(var(--museum-bottom) + 12px)}}
+@media(max-width:600px){.museum-header .about-project{left:auto;right:16px;top:66px;min-height:28px;font-size:14px}}

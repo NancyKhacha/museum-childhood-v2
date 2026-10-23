@@ -1,21 +1,25 @@
-import {puppetPose} from './hero-math.js?v=20261023-v2';
+import {puppetPose} from './hero-math.js?v=20261023-v2b';
 // One autonomous material treatment for the wordmark, clouds and whole puppets.
 // Puppets fall continuously with independent wind and rotation, as in the reference.
 const hero=document.querySelector('.hero'),logo=document.querySelector('.morph-logo'),reduced=matchMedia('(prefers-reduced-motion: reduce)');
 const clamp=(n,a=0,b=1)=>Math.max(a,Math.min(b,n));
-const vertex=`attribute vec2 aPosition;uniform vec4 uRect;uniform vec2 uViewport;uniform float uAngle,uPhase,uTime,uMaterial;varying vec2 vUV;void main(){vUV=vec2(aPosition.x*.5+.5,.5-aPosition.y*.5);float angle=uAngle+sin(uTime*.32+uPhase)*.008*uMaterial;vec2 local=aPosition*uRect.zw*.5;local=mat2(cos(angle),sin(angle),-sin(angle),cos(angle))*local;vec2 center=vec2(uRect.x/uViewport.x*2.-1.,1.-uRect.y/uViewport.y*2.);vec2 offset=vec2(local.x/uViewport.x*2.,-local.y/uViewport.y*2.);float w=1.+aPosition.x*sin(uTime*.24+uPhase)*.018*uMaterial;gl_Position=vec4(center*w+offset,0.,w);}`;
+const vertex=`attribute vec2 aPosition;uniform vec4 uRect;uniform vec2 uViewport;uniform float uAngle,uPhase,uTime,uMaterial,uSky;varying vec2 vUV;void main(){vUV=vec2(aPosition.x*.5+.5,.5-aPosition.y*.5);float angle=uAngle+sin(uTime*.32+uPhase)*.008*uMaterial*(1.-uSky);vec2 local=aPosition*uRect.zw*.5;local=mat2(cos(angle),sin(angle),-sin(angle),cos(angle))*local;vec2 center=vec2(uRect.x/uViewport.x*2.-1.,1.-uRect.y/uViewport.y*2.);vec2 offset=vec2(local.x/uViewport.x*2.,-local.y/uViewport.y*2.);float w=1.+aPosition.x*sin(uTime*.24+uPhase)*.018*uMaterial*(1.-uSky);gl_Position=vec4(center*w+offset,0.,w);}`;
 const fragment=`precision highp float;uniform sampler2D uImage;uniform vec2 uTexel;uniform vec4 uUVRect;uniform float uTime,uPhase,uMaterial,uOpacity,uSky;varying vec2 vUV;
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash(i),hash(i+vec2(1.,0.)),f.x),mix(hash(i+vec2(0.,1.)),hash(i+vec2(1.)),f.x),f.y);}
 float fbm(vec2 p){float f=0.,a=.5;for(int i=0;i<5;i++){f+=a*noise(p);p=mat2(1.6,-1.2,1.2,1.6)*p;a*=.5;}return f;}
 vec4 sampleAsset(vec2 uv){return texture2D(uImage,uUVRect.xy+clamp(uv,.002,.998)*uUVRect.zw);}float relief(vec2 uv){vec4 c=sampleAsset(uv);return dot(c.rgb,vec3(.299,.587,.114))*c.a;}void main(){if(uSky>.5){
-vec2 p=vUV;float t=uTime*.008;
-vec2 q=p+vec2(sin(p.y*5.+t)*.025,cos(p.x*4.-t)*.018);
-float cloud=fbm(vec2(q.x*3.+q.y*6.+t,q.y*12.-t));
-float feather=pow(max(0.,1.-abs(cloud-.48)*5.),4.);
-float edge=smoothstep(.12,.52,abs(p.x-.5))*.65+smoothstep(.60,1.,p.y)*.4;
-float lens=exp(-length((p-vec2(.82+sin(t)*.05,.78))*vec2(1.8,1.0))*3.);
-vec3 blue=vec3(0.,.4667,1.);vec3 color=mix(blue,vec3(.71,.89,1.),clamp(feather*edge*.46+lens*.18,0.,.48));
+float aspect=max(uMaterial,.3);vec2 p=vec2(vUV.x*aspect,vUV.y+uPhase);float t=uTime*.01;
+// Cirrus: thin fibres stretched along a shallow diagonal, gathered into drifting patches,
+// over a softer veil; a light clearing keeps the wordmark legible.
+vec2 s=mat2(.94,-.34,.34,.94)*p;
+float patches=smoothstep(.28,.60,fbm(s*vec2(1.2,2.4)+vec2(t,1.7)));
+float fibre=smoothstep(.40,.80,fbm(s*vec2(2.,15.)+vec2(t*2.,0.)+fbm(s*3.2)*.9));
+float veil=smoothstep(.42,.82,fbm(s*vec2(.8,4.6)-vec2(t*.6,0.)+3.1));
+float cloud=clamp(patches*(fibre+veil*.45),0.,1.);
+vec2 d=(vUV-vec2(.5,.42))*vec2(2.4,3.);float clearing=1.-.45*exp(-dot(d,d));
+float lens=exp(-length((vUV-vec2(.82+sin(t)*.05,.78))*vec2(1.8,1.0))*3.);
+vec3 blue=vec3(0.,.4667,1.);vec3 color=mix(blue,vec3(.86,.95,1.),clamp((cloud*clearing*.9+lens*.14)*uOpacity,0.,.82));
 gl_FragColor=vec4(color,1.);return;}
 vec2 uv=vUV+vec2(sin(vUV.y*7.+uTime*.6+uPhase),cos(vUV.x*6.-uTime*.5+uPhase))*.0022*uMaterial;vec4 c=sampleAsset(uv);if(c.a<.005)discard;float dx=relief(uv-vec2(uTexel.x*2.,0.))-relief(uv+vec2(uTexel.x*2.,0.));float dy=relief(uv-vec2(0.,uTexel.y*2.))-relief(uv+vec2(0.,uTexel.y*2.));vec3 normal=normalize(vec3(dx*3.,dy*3.,1.));vec3 light=normalize(vec3(sin(uTime*.16+uPhase)*.6,.35,1.5));float spec=pow(max(dot(normal,normalize(light+vec3(0.,0.,1.))),0.),40.);vec3 color=c.rgb*(1.-.018*uMaterial)+vec3(.025,.033,.042)*spec*uMaterial;float alpha=c.a*uOpacity;gl_FragColor=vec4(color*alpha,alpha);}`;
 class GelCanvas{
@@ -28,19 +32,22 @@ class GelCanvas{
 const ready=image=>image.complete&&image.naturalWidth?Promise.resolve():new Promise((resolve,reject)=>{image.addEventListener('load',resolve,{once:true});image.addEventListener('error',reject,{once:true});});
 function contained(image,box,origin={left:0,top:0}){const ratio=image.naturalWidth/image.naturalHeight,w=Math.min(box.width,box.height*ratio),h=w/ratio;return{x:box.left-origin.left+box.width/2,y:box.top-origin.top+box.height/2,w,h};}
 if(hero&&logo&&!reduced.matches){
- const sceneCanvas=document.createElement('canvas'),logoCanvas=document.createElement('canvas');sceneCanvas.className='hero-scene';sceneCanvas.setAttribute('aria-hidden','true');sceneCanvas.dataset.effect='whole-scene-gel';logoCanvas.setAttribute('aria-hidden','true');hero.append(sceneCanvas);logo.append(logoCanvas);
+ const sceneCanvas=document.createElement('canvas'),logoCanvas=document.createElement('canvas');sceneCanvas.className='hero-scene';sceneCanvas.setAttribute('aria-hidden','true');sceneCanvas.dataset.effect='whole-scene-gel';logoCanvas.setAttribute('aria-hidden','true');document.body.prepend(sceneCanvas);logo.append(logoCanvas);
  let scene,wordmark;
  try{scene=new GelCanvas(sceneCanvas);wordmark=new GelCanvas(logoCanvas);hero.classList.add('scene-active');}catch{sceneCanvas.remove();logoCanvas.remove();}
  if(scene&&wordmark){
   const logoImage=logo.querySelector('img'),cloudElements=[...hero.querySelectorAll('.cloud')],headElements=[...hero.querySelectorAll('.falling')],images=[logoImage,...cloudElements.map(n=>n.querySelector('img')),...headElements.map(n=>n.querySelector('img'))];let frame=0,started=0,loaded=false,logoAsset,clouds,heads;
-  function draw(now){frame=0;if(!loaded||document.hidden||reduced.matches)return;const time=(now-started)/1000,visible=scrollY<hero.offsetHeight;
+  function draw(now){frame=0;if(!loaded||document.hidden||reduced.matches)return;const time=(now-started)/1000,h=hero.getBoundingClientRect(),visible=h.bottom>0;
    wordmark.resize(690,345);wordmark.clear();wordmark.draw(logoAsset,{x:345,y:172.5,w:690,h:345},{time,material:.8});
-   if(visible){const h=hero.getBoundingClientRect();scene.resize(h.width,h.height);scene.clear();scene.draw(heads[0].asset,{x:h.width/2,y:h.height/2,w:h.width,h:h.height},{time,material:0,sky:1});for(const [i,c]of clouds.entries()){const r=contained(c.asset.image,c.el.getBoundingClientRect(),h);r.y+=Math.sin(time*.25+i)*4;scene.draw(c.asset,r,{time,phase:i*1.7,material:.75});}
+   // The sky stays fixed behind the whole page. Past the cover it is redrawn only on scroll, with thinner clouds behind the text.
+   const sw=sceneCanvas.clientWidth||innerWidth,sh=sceneCanvas.clientHeight||innerHeight,leave=clamp(-h.top/h.height);
+   scene.resize(sw,sh);scene.clear();scene.draw(heads[0].asset,{x:sw/2,y:sh/2,w:sw,h:sh},{time,material:sw/sh,sky:1,phase:scrollY/sh*.3,opacity:1-.45*leave});
+   if(visible){for(const [i,c]of clouds.entries()){const r=contained(c.asset.image,c.el.getBoundingClientRect());r.y+=Math.sin(time*.25+i)*4;scene.draw(c.asset,r,{time,phase:i*1.7,material:.75});}
     let entered=0;
     for(const [i,b]of heads.entries()){
      const pose=puppetPose(i,time,h.width,h.height);if(!pose)continue;entered++;
      const cells=b.el.hasAttribute('data-cell')?2:1,cell=Number(b.el.dataset.cell)||0,aspect=b.asset.image.naturalWidth/cells/b.asset.image.naturalHeight;
-     scene.draw(b.asset,{x:pose.x,y:pose.y,w:pose.height*aspect,h:pose.height},{time,phase:i*.9,angle:pose.angle,material:.18,uvRect:[cell/cells,0,1/cells,1]});
+     scene.draw(b.asset,{x:pose.x+h.left,y:pose.y+h.top,w:pose.height*aspect,h:pose.height},{time,phase:i*.9,angle:pose.angle,material:.18,opacity:1-.5*leave,uvRect:[cell/cells,0,1/cells,1]});
     }
     hero.dataset.enteredHeads=String(entered);
     frame=requestAnimationFrame(draw);

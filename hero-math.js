@@ -7,7 +7,7 @@ export function puppetPose(index,time,width,height){
  if(age<0)return null;
  const cycle=Math.floor(age/duration),progress=(age%duration)/duration;
  const phase=index*2.399963+cycle*.9;
- const size=(width<=600?91:144)*(1-variant*.07);
+ const size=(width<=600?124:206)*(1-variant*.07);
  const spawn=(index*.61803398875+cycle*.27)%1;
  const wind=Math.sin(progress*Math.PI*2.8+phase)*width*(width<=600?.075:.085)+Math.sin(time*.19+phase)*width*.025;
  let x=width*(.06+.88*spawn)+wind;

@@ -12,3 +12,12 @@ export function displaySize(aspect,index,width,height){const p=placements[index%
 export function visibility(depth,camera,perspective=1000){return depth-camera> -perspective+30?1:0;}
 
 export function endReached(scroll,geometry){return scroll>=geometry.scrollDistance-2;}
+// Chrome keeps a giant raster for any 3D layer near the eye and drops its tiles
+// under memory pressure; walking back then shows half-painted items with no
+// caption. An item is shown only while some of it is in frame and it is less
+// than five times its resting size, so its layer never grows that large.
+export function onScreen(position,size,camera,width,height,perspective=1000){
+ const eye=perspective-(camera-position.z);if(eye<perspective/5)return false;
+ const s=perspective/eye,halfW=size.width/2*s,halfH=(size.height/2+80)*s;
+ return Math.abs(position.x*s)-halfW<width/2&&Math.abs(position.y*s)-halfH<height/2;
+}

@@ -87,3 +87,16 @@
 .puppet-slot-3,.puppet-slot-7,.puppet-slot-11{left:auto;right:13%;top:67%}
 .puppet-slot-4,.puppet-slot-8{left:25%;top:9%}
 @media(max-width:600px){.hero-subtitle{top:var(--subtitle-top,55%);width:280px;font-size:20px}.puppet{width:62px;height:93px}.project-actions{margin:4px 0 30px}.project-lead{columns:1}}
+/* v2: one continuous sky behind the cover and the story, so the first screen never ends on a seam. */
+body{background:var(--blue)}main{position:relative;z-index:1}
+.hero-scene{position:fixed;inset:0;width:100%;height:100%;z-index:0}
+.hero.scene-active{background:transparent}.story{background:transparent;padding-bottom:120px}
+/* The header fades into the sky instead of ending on a solid plate; «О проекте» sits next to the partners. */
+.fixed-header{height:116px;background:linear-gradient(to bottom,rgb(0 119 255 / var(--hero-progress)) 0 72%,rgb(0 119 255 / 0))}
+.header-about{left:auto;right:276px;top:26px;min-height:40px;font-size:16px}
+.enter-bar{position:fixed;left:0;right:0;bottom:0;z-index:25;display:flex;justify-content:center;padding:14px 16px max(14px,env(safe-area-inset-bottom));background:var(--blue);box-shadow:0 -10px 30px rgba(0,33,71,.18);transform:translateY(110%);transition:transform .35s cubic-bezier(.2,.8,.2,1)}
+.enter-bar.is-visible{transform:none}
+.enter-bar .primary{background:var(--vk-red);color:#fff;min-width:320px;font-size:20px;font-weight:700}
+.enter-bar .primary:hover{background:#e62238}.enter-bar .primary:focus-visible{outline:3px solid #fff;outline-offset:4px}
+@media(max-width:600px){.fixed-header{height:108px}.header-about{left:auto;right:16px;top:64px;min-height:32px;font-size:14px}.enter-bar .primary{width:100%;min-width:0}.story{padding-bottom:110px}}
+@media(prefers-reduced-motion:reduce){.enter-bar{transition:none}}
