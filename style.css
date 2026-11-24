@@ -81,10 +81,11 @@
 .puppet-window{display:block;width:100%;height:100%;overflow:hidden}
 .puppet img{display:block;width:100%;height:100%;max-width:none;object-fit:contain;transform:none}
 .puppet[data-cell] img{width:200%;transform:translateX(calc(var(--cell)*-50%))}
-.puppet-slot-1,.puppet-slot-5,.puppet-slot-9{left:auto;right:6%;top:20%}
-.puppet-slot-2,.puppet-slot-6,.puppet-slot-10{left:16%;top:70%}
-.puppet-slot-3,.puppet-slot-7,.puppet-slot-11{left:auto;right:13%;top:67%}
-.puppet-slot-4,.puppet-slot-8{left:25%;top:9%}
+/* Places are set by hero-gl.js. Behind the letters, over them, or on the lower edge of the cover;
+   the puppets around the wordmark leave together with it. */
+.puppet{z-index:1;transform-origin:50% 50%;opacity:calc(1 - var(--hero-progress)*3)}
+/* Puppets may stand behind the scroll arrow: a blue disc keeps it readable over them. */
+.down{background:rgb(0 119 255 / .72)}
 @media(max-width:600px){.hero-subtitle{top:var(--subtitle-top,55%);width:280px;font-size:20px}.puppet{width:62px;height:93px}.project-actions{margin:4px 0 30px}.project-lead{columns:1}}
 /* v2: one continuous sky behind the cover and the story, so the first screen never ends on a seam. */
 body{background:var(--blue)}main{position:relative;z-index:1}

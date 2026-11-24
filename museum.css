@@ -95,3 +95,5 @@
  .museum-header .partner-links img{height:22px}
 }
 @media(max-width:359px){.museum-header .museum-home{width:72px;height:36px}.museum-header .partner-links .partner-vk{width:88px}.museum-header .partner-links img{height:19px}}
+/* The viewing button after the full era text (the 2020s finale keeps it above). */
+.reader-content>.watch-programme-after{margin:10px 0 0}

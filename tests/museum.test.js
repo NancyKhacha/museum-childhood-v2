@@ -16,24 +16,42 @@ test('each epoch opens with both complete expert quotes and photos',()=>{for(con
 
 test('successive artifacts leave a central sightline at different camera depths',()=>{for(const era of data.eras)for(let i=0;i<era.objects.length-1;i++){const width=1280,height=544,poses=[i,i+1].map(j=>objectPosition(j,width,height));for(const camera of [poses[0].z-600,poses[0].z,poses[0].z+100]){const boxes=[i,i+1].map((j,k)=>{const size=displaySize(era.objects[j].aspect,j,width,height),scale=1000/(1000+poses[k].z-camera);return {left:width/2+(poses[k].x-size.width/2)*scale,right:width/2+(poses[k].x+size.width/2)*scale};}).sort((a,b)=>a.left-b.left);assert.ok(boxes[1].left-boxes[0].right>50,`${era.label}, pair ${i}`);assert.ok(boxes[0].right<width/2&&boxes[1].left>width/2);}}});
 
-test('viewing CTAs from the source copy are retained in every era and the finale',()=>{assert.deepEqual(data.eras.map(e=>e.watchProgramme),[true,true,true,true,true]);assert.equal(data.watch.url,'https://vkvideo.ru/playlist/-113057035_11');assert.equal(data.watch.label,'«Спокойной ночи, малыши! Ждут друзей» в VK Видео');});
+test('viewing CTAs from the source copy are retained in every era and the finale',()=>{assert.deepEqual(data.eras.map(e=>e.watchProgramme),[true,true,true,true,true]);assert.equal(data.watch.url,'https://vkvideo.ru/playlist/-113057035_11');assert.equal(data.watch.label,'Смотрите «Спокойной ночи, малыши! Ждут друзей» в VK Видео');});
 
 test('the final comment has an identified portrait with source and credit',()=>{assert.equal(data.finalSpeaker.name,'Александр Митрошенков');assert.ok(data.final.includes(data.finalSpeaker.name));assert.match(data.finalSpeaker.photo,/mitroshenkov\.jpg$/);assert.equal(data.finalSpeaker.license,'https://creativecommons.org/licenses/by/4.0/');});
 
-import {puppetPose} from '../hero-math.js';
-test('the cover has three era variants of each character and all approved introductory paragraphs',async()=>{
- const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
- for(const character of ['hryusha','stepashka','filya','karkusha'])assert.equal((html.match(new RegExp(`data-character="${character}"`,'g'))||[]).length,3);
+import {DESIGN,coverPlaces,flightPose,pivotAtFeet,coverMode,FLIGHT} from '../hero-math.js';
+const coverHtml=await readFile(new URL('../index.html',import.meta.url),'utf8');
+const coverIds=new Set([...coverHtml.matchAll(/class="falling puppet" data-id="([^"]+)"/g)].map(m=>m[1]));
+test('the cover has archival and modern versions of every character and all approved introductory paragraphs',()=>{
+ for(const character of ['hryusha','stepashka','filya','karkusha'])for(const era of ['archival','modern'])assert.ok(coverHtml.includes(`data-character="${character}" data-era="${era}"`));
+ for(const mode of ['landscape','portrait'])for(const f of DESIGN[mode].figures)assert.ok(coverIds.has(f.id),f.id);
+ assert.ok(DESIGN.landscape.figures.length>=18&&DESIGN.portrait.figures.length>=12);
  const normalize=s=>s.replace(/<[^>]*>/g,' ').replace(/&quot;/g,'"').replace(/&amp;/g,'&').replace(/\s+/g,' ').trim();
- for(const p of data.intro.split(/\n\s*\n/).filter(Boolean))assert.ok(normalize(html).includes(normalize(p)));
+ for(const p of data.intro.split(/\n\s*\n/).filter(Boolean))assert.ok(normalize(coverHtml).includes(normalize(p)));
 });
-test('falling puppets enter sequentially and their lateral trajectories change direction',()=>{
- assert.equal(puppetPose(11,0,1280,720),null);assert.ok(puppetPose(11,8,1280,720));
- for(let i=0;i<12;i++){
-  const poses=Array.from({length:101},(_,j)=>puppetPose(i,i*.65+j*.2,1280,720));
-  const deltas=poses.slice(1).map((p,j)=>p.x-poses[j].x);
-  assert.ok(deltas.some(d=>d>0)&&deltas.some(d=>d<0));
-  assert.ok(poses.every(p=>p.height>100&&p.height<150));
-  assert.ok(poses.slice(1).every((p,j)=>p.y>poses[j].y));
+test('on the design screen sizes every puppet lands exactly where it stands in Figma',()=>{
+ for(const mode of ['landscape','portrait']){
+  const d=DESIGN[mode],[W,H]=d.frame,[x,y,w,h]=d.logo,{places}=coverPlaces({width:W,height:H,logo:{x,y,w,h}});
+  assert.equal(coverMode(W,H),mode);assert.equal(places.size,d.figures.length);
+  for(const f of d.figures){const p=places.get(f.id);for(const key of ['cx','cy','w','h'])assert.ok(Math.abs(p[key]-f[key])<1e-6,`${f.id} ${key}`);assert.equal(p.rot,f.rot);assert.equal(p.flip,f.flip);}
  }
+});
+test('on other screens the photo stretches between the wordmark and the screen edges without losing anyone',()=>{
+ for(const [W,H,logo] of [[1920,1080,{x:615,y:316.4,w:690,h:345}],[1280,720,{x:295,y:136.4,w:690,h:345}],[1024,768,{x:204.8,y:195.2,w:614.4,h:307.2}],[375,667,{x:20,y:207.1,w:335,h:167.5}]]){
+  const mode=coverMode(W,H),{places}=coverPlaces({width:W,height:H,logo});assert.equal(places.size,DESIGN[mode].figures.length);
+  for(const p of places.values()){assert.ok(p.cx>-.25*W&&p.cx<1.25*W&&p.cy>-.25*H&&p.cy<1.3*H,`${W}×${H} ${p.id}`);assert.ok(p.h>.1*logo.h&&p.h<2.5*logo.h,`${W}×${H} ${p.id} size`);}
+ }
+});
+test('puppets fly in from beyond the screen, the back of the photo first, then only sway on their place',()=>{
+ const {places}=coverPlaces({width:1280,height:800,logo:{x:295,y:176.4,w:690,h:345}}),view={width:1280,height:800,centre:{x:640,y:348.9}};
+ const done=FLIGHT.start+DESIGN.landscape.figures.length*FLIGHT.step+FLIGHT.duration;
+ for(const p of places.values()){
+  assert.equal(flightPose(p,0,view).alpha,0);
+  const start=flightPose(p,FLIGHT.start+p.order*FLIGHT.step+.001,view);assert.ok(Math.hypot(start.x-p.cx,start.y-p.cy)>700,p.id);
+  for(let t=done;t<done+40;t+=.53){const m=flightPose(p,t,view);assert.ok(m.landed&&Math.abs(m.x-p.cx)<1e-6&&Math.abs(m.y-p.cy)<1e-6&&Math.abs(m.angle-p.rot*Math.PI/180)<1e-9&&Math.abs(m.sway)<.02&&Math.abs(m.scale-1)<1e-9,p.id);}
+ }
+ // Swaying turns the puppet around its anchor, which stays where it was put.
+ const r=pivotAtFeet(100,500,80,120,.04,.4,.7),c=Math.cos(.04),s=Math.sin(.04),fx=(.4-.5)*80,fy=(.7-.5)*120;
+ assert.ok(Math.abs(r.x+c*fx-s*fy-100)<1e-9&&Math.abs(r.y+s*fx+c*fy-500)<1e-9);
 });

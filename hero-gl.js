@@ -1,8 +1,23 @@
-import {puppetPose} from './hero-math.js?v=20261023-v2o';
+import {coverPlaces,flightPose,pivotAtFeet} from './hero-math.js?v=20261124-v2t';
 // One autonomous material treatment for the wordmark, clouds and whole puppets.
-// Puppets fall continuously with independent wind and rotation, as in the reference.
+// The puppets stand as in the Figma design, a group photo around and behind the wordmark; they fly in on load and then stay put.
 const hero=document.querySelector('.hero'),logo=document.querySelector('.morph-logo'),reduced=matchMedia('(prefers-reduced-motion: reduce)');
 const clamp=(n,a=0,b=1)=>Math.max(a,Math.min(b,n));
+const ready=image=>image.complete&&image.naturalWidth?Promise.resolve():new Promise((resolve,reject)=>{image.addEventListener('load',resolve,{once:true});image.addEventListener('error',reject,{once:true});});
+const subtitle=document.querySelector('.hero-subtitle'),root=document.documentElement,logoImage=logo&&logo.querySelector('img');
+const puppets=[...document.querySelectorAll('.hero .puppet')].map(el=>({el,id:el.dataset.id,img:el.querySelector('img')}));
+// Places depend only on the cover size and the resting wordmark, so they are found once per size.
+let layoutKey='',layoutCache=null;
+function coverLayout(){
+ if(!hero)return null;
+ const width=hero.clientWidth,height=hero.clientHeight,key=width+'x'+height+'|'+(hero.dataset.logoRest||'');if(key===layoutKey)return layoutCache;
+ const [x,y,w,h]=(hero.dataset.logoRest||'').split(',').map(Number),box=logo.getBoundingClientRect(),rest=Number.isFinite(h)?{x,y,w,h}:{x:box.left,y:box.top,w:box.width,h:box.height};
+ layoutKey=key;layoutCache={...coverPlaces({width,height,logo:rest}),width,height,centre:{x:rest.x+rest.w/2,y:rest.y+rest.h/2}};return layoutCache;
+}
+// Plain images (no WebGL or reduced motion) stand on the same places at once. Later in the document paints on top,
+// so the back of the photo goes first.
+function placePuppets(){const layout=coverLayout();if(!layout)return;const shown=[];for(const p of puppets){const at=layout.places.get(p.id);p.el.hidden=!at;if(!at)continue;Object.assign(p.el.style,{left:at.cx-at.w/2+'px',top:at.cy-at.h/2+'px',width:at.w+'px',height:at.h+'px',transform:`rotate(${at.rot}deg)${at.flip?' scaleX(-1)':''}`});shown.push([at.order,p.el]);}shown.sort((a,b)=>a[0]-b[0]);for(const [,el]of shown)hero.insertBefore(el,subtitle);}
+placePuppets();addEventListener('resize',()=>requestAnimationFrame(placePuppets));
 const vertex=`attribute vec2 aPosition;uniform vec4 uRect;uniform vec2 uViewport;uniform float uAngle,uPhase,uTime,uMaterial,uSky;varying vec2 vUV;void main(){vUV=vec2(aPosition.x*.5+.5,.5-aPosition.y*.5);float angle=uAngle+sin(uTime*.32+uPhase)*.008*uMaterial*(1.-uSky);vec2 local=aPosition*uRect.zw*.5;local=mat2(cos(angle),sin(angle),-sin(angle),cos(angle))*local;vec2 center=vec2(uRect.x/uViewport.x*2.-1.,1.-uRect.y/uViewport.y*2.);vec2 offset=vec2(local.x/uViewport.x*2.,-local.y/uViewport.y*2.);float w=1.+aPosition.x*sin(uTime*.24+uPhase)*.018*uMaterial*(1.-uSky);gl_Position=vec4(center*w+offset,0.,w);}`;
 const fragment=`precision highp float;uniform sampler2D uImage;uniform vec2 uTexel;uniform vec4 uUVRect;uniform float uTime,uPhase,uMaterial,uOpacity,uSky,uBlur;varying vec2 vUV;
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
@@ -32,14 +47,13 @@ class GelCanvas{
  clear(){const gl=this.gl;gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);}
  draw(asset,rect,{angle=0,phase=0,time=0,material=.2,opacity=1,sky=0,blur=0,uvRect=[0,0,1,1]}={}){const gl=this.gl;gl.bindTexture(gl.TEXTURE_2D,asset.texture);gl.uniform2f(this.u.Texel,1/asset.image.naturalWidth,1/asset.image.naturalHeight);gl.uniform4f(this.u.Rect,rect.x,rect.y,rect.w,rect.h);gl.uniform1f(this.u.Angle,angle);gl.uniform1f(this.u.Phase,phase);gl.uniform1f(this.u.Time,time);gl.uniform1f(this.u.Material,material);gl.uniform1f(this.u.Opacity,opacity);gl.uniform1f(this.u.Sky,sky);gl.uniform1f(this.u.Blur,blur);gl.uniform4fv(this.u.UVRect,uvRect);gl.drawArrays(gl.TRIANGLES,0,6);}
 }
-const ready=image=>image.complete&&image.naturalWidth?Promise.resolve():new Promise((resolve,reject)=>{image.addEventListener('load',resolve,{once:true});image.addEventListener('error',reject,{once:true});});
 function contained(image,box,origin={left:0,top:0}){const ratio=image.naturalWidth/image.naturalHeight,w=Math.min(box.width,box.height*ratio),h=w/ratio;return{x:box.left-origin.left+box.width/2,y:box.top-origin.top+box.height/2,w,h};}
 if(hero&&logo&&!reduced.matches){
  const sceneCanvas=document.createElement('canvas'),logoCanvas=document.createElement('canvas');sceneCanvas.className='hero-scene';sceneCanvas.setAttribute('aria-hidden','true');sceneCanvas.dataset.effect='whole-scene-gel';logoCanvas.setAttribute('aria-hidden','true');document.body.prepend(sceneCanvas);logo.append(logoCanvas);
  let scene,wordmark;
  try{scene=new GelCanvas(sceneCanvas);wordmark=new GelCanvas(logoCanvas);hero.classList.add('scene-active');}catch{sceneCanvas.remove();logoCanvas.remove();}
  if(scene&&wordmark){
-  const logoImage=logo.querySelector('img'),cloudElements=[...hero.querySelectorAll('.cloud')],headElements=[...hero.querySelectorAll('.falling')];let frame=0,started=0,loaded=false,logoAsset=null;const clouds=[],heads=headElements.map(()=>null);
+  const cloudElements=[...hero.querySelectorAll('.cloud')];let frame=0,started=0,loaded=false,logoAsset=null,flightStart=null,puppetsReady=false;const clouds=[],heads=puppets.map(()=>null);
   // The sky needs no picture and starts at once; the wordmark and every puppet join as soon as their own image arrives.
   const blank=document.createElement('canvas');blank.width=blank.height=1;const skyAsset={...scene.texture(blank),image:{naturalWidth:1,naturalHeight:1}};
   function draw(now){frame=0;if(!loaded||document.hidden||reduced.matches)return;const time=(now-started)/1000,h=hero.getBoundingClientRect(),visible=h.bottom>0;
@@ -48,24 +62,33 @@ if(hero&&logo&&!reduced.matches){
    const sw=sceneCanvas.clientWidth||innerWidth,sh=sceneCanvas.clientHeight||innerHeight,leave=clamp(-h.top/h.height);
    scene.resize(sw,sh);scene.clear();scene.draw(skyAsset,{x:sw/2,y:sh/2,w:sw,h:sh},{time,material:sw/sh,sky:1,phase:scrollY/sh*.3,opacity:1-.45*leave});
    if(visible){for(const [i,c]of clouds.entries()){const r=contained(c.asset.image,c.el.getBoundingClientRect());r.y+=Math.sin(time*.25+i)*4;scene.draw(c.asset,r,{time,phase:i*1.7,material:.75});}
-    let entered=0;
-    // Smaller (farther) puppets are drawn first so the near ones pass in front of them.
-    // A puppet that arrives late starts its route from the beginning, so it flies in rather than popping up mid-sky.
-    const poses=heads.map((b,i)=>b&&{b,i,pose:puppetPose(i,time-b.delay,h.width,h.height)}).filter(p=>p&&p.pose).sort((p,q)=>p.pose.height-q.pose.height);entered=poses.length;
-    for(const {b,i,pose}of poses){
-     const cells=b.el.hasAttribute('data-cell')?2:1,cell=Number(b.el.dataset.cell)||0,aspect=b.asset.image.naturalWidth/cells/b.asset.image.naturalHeight;
-     scene.draw(b.asset,{x:pose.x+h.left,y:pose.y+h.top,w:pose.height*aspect,h:pose.height},{time,phase:i*.9,angle:pose.angle,material:.18,opacity:(1-.5*leave)*pose.alpha,blur:pose.blur*b.asset.image.naturalHeight/pose.height,uvRect:[cell/cells,0,1/cells,1]});
+    // The whole photo is under the wordmark; it rides with the cover and fades as soon as the page scrolls.
+    // The flight starts once every puppet picture is in, so nobody pops up in place later.
+    const layout=coverLayout(),morph=clamp(parseFloat(root.style.getPropertyValue('--hero-progress'))||0),fade=1-clamp(morph*3);let entered=0,landed=0;
+    if(layout&&puppetsReady&&flightStart===null)flightStart=time;
+    if(layout&&flightStart!==null&&fade>0){
+     const crowd=[];for(const b of heads){const at=b&&layout.places.get(b.p.id);if(at)crowd.push({b,at});}
+     for(const {b,at}of crowd.sort((x,y)=>x.at.order-y.at.order)){
+      const pose=flightPose(at,time-flightStart,layout);if(pose.alpha<=0)continue;
+      // The swaying turns the picture around the middle of its lower edge.
+      const pw=at.w*pose.scale,ph=at.h*pose.scale,c=Math.cos(pose.angle),s=Math.sin(pose.angle),angle=pose.angle+pose.sway;
+      const rect=pivotAtFeet(h.left+pose.x-s*ph/2,h.top+pose.y+c*ph/2,pw,ph,angle);
+      scene.draw(b.asset,rect,{time,phase:at.order*.9,angle,material:.18,opacity:fade*pose.alpha,uvRect:at.flip?[1,0,-1,1]:[0,0,1,1]});entered++;if(pose.landed)landed++;
+     }
     }
+    hero.dataset.landed=String(landed);
     hero.dataset.enteredHeads=String(entered);
     frame=requestAnimationFrame(draw);
    }
   }
   const wake=()=>{if(loaded&&!frame&&!reduced.matches)frame=requestAnimationFrame(draw);};
-  started=performance.now();loaded=true;hero.dataset.renderer='webgl';hero.dataset.sequence='continuous-wind';wake();
+  started=performance.now();loaded=true;hero.dataset.renderer='webgl';hero.dataset.sequence='flight';wake();
   // Until its image is decoded the wordmark stays the plain <img>; a broken image simply keeps that fallback.
   ready(logoImage).then(()=>{logoAsset=wordmark.texture(logoImage);if(!reduced.matches)logo.classList.add('gl-active');logo.dataset.renderer='webgl';wake();}).catch(()=>logoCanvas.remove());
   for(const el of cloudElements){const img=el.querySelector('img');ready(img).then(()=>clouds.push({el,asset:scene.texture(img)})).catch(()=>{});}
-  headElements.forEach((el,i)=>{const img=el.querySelector('img');ready(img).then(()=>{heads[i]={el,asset:scene.texture(img),delay:Math.max(0,(performance.now()-started)/1000-i*.65)};}).catch(()=>{});});
+  puppets.forEach((p,i)=>{ready(p.img).then(()=>{heads[i]={p,asset:scene.texture(p.img)};}).catch(()=>{});});
+  // The subtitle font moves the wordmark a little, so the flight also waits for it.
+  Promise.all([...puppets.map(p=>ready(p.img).catch(()=>{})),document.fonts?document.fonts.ready.catch(()=>{}):null]).then(()=>{puppetsReady=true;wake();});
   addEventListener('scroll',wake,{passive:true});addEventListener('resize',wake);document.addEventListener('visibilitychange',wake);reduced.addEventListener('change',()=>{hero.classList.toggle('scene-active',!reduced.matches);logo.classList.toggle('gl-active',!reduced.matches&&!!logoAsset);if(reduced.matches){cancelAnimationFrame(frame);frame=0;}else wake();});for(const canvas of [sceneCanvas,logoCanvas])canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();loaded=false;hero.classList.remove('scene-active');logo.classList.remove('gl-active');});
  }
 }
