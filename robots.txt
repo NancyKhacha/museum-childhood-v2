@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://nancykhacha.github.io/museum-childhood-v2/sitemap.xml

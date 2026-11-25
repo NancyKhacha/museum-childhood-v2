@@ -1,5 +1,3 @@
-node_modules/
+dist/
+.claude/
 .DS_Store
-__pycache__/
-*.log
-qa/

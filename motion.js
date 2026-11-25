@@ -13,6 +13,8 @@ function render(now=performance.now()){
 function syncEnter(){const shown=scrollY>40;if(enterBar.classList.contains('is-visible')===shown)return;enterBar.classList.toggle('is-visible',shown);enterBar.setAttribute('aria-hidden',String(!shown));enterBar.querySelector('a').tabIndex=shown?0:-1;}
 function request(){syncEnter();if(!pending){pending=true;requestAnimationFrame(render)}}
 addEventListener('scroll',request,{passive:true});addEventListener('resize',request);reduce.addEventListener('change',request);syncEnter();render();
+// The subtitle font decides how many lines it takes and so where the wordmark rests: place it again once the font is in.
+if(document.fonts)document.fonts.ready.then(request);
 // Once the cover has settled, warm the cache for the first corridor so «Войти в музей» opens quickly.
 // Skipped on data-saver and 2G; the heavy third exhibit is left to load in the museum itself.
 addEventListener('load',()=>setTimeout(()=>{const c=navigator.connection;if(c&&(c.saveData||/2g/.test(c.effectiveType||'')))return;

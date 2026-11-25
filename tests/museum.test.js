@@ -55,3 +55,26 @@ test('puppets fly in from beyond the screen, the back of the photo first, then o
  const r=pivotAtFeet(100,500,80,120,.04,.4,.7),c=Math.cos(.04),s=Math.sin(.04),fx=(.4-.5)*80,fy=(.7-.5)*120;
  assert.ok(Math.abs(r.x+c*fx-s*fy-100)<1e-9&&Math.abs(r.y+s*fx+c*fy-500)<1e-9);
 });
+test('both pages are ready for search and sharing: title, description, canonical, Open Graph, icons and valid structured data',async()=>{
+ const base=(await readFile(new URL('../site-url.txt',import.meta.url),'utf8')).trim();
+ for(const [page,url] of [['index.html',base],['museum.html',base+'museum.html']]){
+  const html=await readFile(new URL('../'+page,import.meta.url),'utf8'),meta=(attr,name)=>(html.match(new RegExp(`<meta ${attr}="${name}" content="([^"]*)"`))||[])[1];
+  const title=html.match(/<title>([^<]+)<\/title>/)[1],description=meta('name','description');
+  assert.ok(title.length>=20&&title.length<=65,page+' title');assert.ok(description.length>=70&&description.length<=160,page+' description');
+  assert.ok(html.includes(`<link rel="canonical" href="${url}">`),page+' canonical');assert.equal(meta('property','og:url'),url);
+  for(const name of ['og:title','og:description','og:image','og:image:alt','og:site_name'])assert.ok(meta('property',name),page+' '+name);
+  assert.equal(meta('property','og:image'),base+'assets/og-cover.jpg');assert.equal(meta('name','twitter:card'),'summary_large_image');
+  assert.ok(html.includes('rel="icon" href="favicon.ico"')&&html.includes('rel="apple-touch-icon"'),page+' icons');
+  const ld=[...html.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/g)].map(m=>JSON.parse(m[1]));
+  assert.ok(ld.length===1&&ld[0]['@graph'].some(n=>n['@type']==='WebPage'&&n.url===url),page+' structured data');
+  assert.equal((html.match(/<h1[\s>]/g)||[]).length,page==='index.html'?1:1,page+' one h1');
+ }
+});
+test('the museum text version repeats every era, exhibit and the finale for robots and browsers without JavaScript',async()=>{
+ const html=await readFile(new URL('../museum.html',import.meta.url),'utf8'),block=html.split('<!-- museum-text:start -->')[1].split('<!-- museum-text:end -->')[0];
+ const text=block.replace(/<[^>]+>/g,' ').replace(/&quot;/g,'"').replace(/&amp;/g,'&').replace(/&#x27;/g,"'").replace(/\s+/g,' ');
+ const clean=s=>s.replace(/\s+/g,' ').trim();
+ for(const era of data.eras){assert.ok(text.includes(clean(era.label)));assert.ok(text.includes(clean(era.introduction.split(/\n\s*\n/)[0])),era.label);for(const o of era.objects){assert.ok(text.includes(clean(o.name)),o.name);assert.ok(text.includes(clean(o.body.split(/\n\s*\n/)[0])),o.name+' body');}}
+ assert.ok(text.includes(clean(data.finalSpeaker.name))&&text.includes('«Спокушки» сегодня'));
+ assert.ok(html.indexOf('<noscript><div class="load-error">')<html.indexOf('<!-- museum-text:start -->'),'inside noscript');
+});
